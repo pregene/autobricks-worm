@@ -11,3 +11,7 @@ name = "ab-worm"
 path = "src/main.rs"
 
 [dependencies]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "=0.16.0", default-features = false }
+libc = "0.2"

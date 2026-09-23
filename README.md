@@ -71,6 +71,12 @@ audit.log → audit.log.meta
 
 `metadata::check_user_entry_name()` reserves the `.meta` suffix, case-insensitively, for metadata entries. It also rejects empty names, `.` and `..`, path separators, and null bytes. `metadata::name_for()` applies these checks before deriving the metadata filename.
 
+## FUSE namespace adapter
+
+On Linux, `fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
+
+`NamespaceGuard::new(filesystem).mount(mountpoint, options)` mounts the wrapped filesystem and processes requests. Other callbacks forward to the backing implementation.
+
 ## Verification
 
 ```sh
@@ -81,12 +87,31 @@ cargo fmt --check
 
 The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, immutable file and directory paths, and arithmetic overflow.
 
+The Linux mount test exercises `fopen()`, directory creation, symbolic links, hard links, FIFO creation, and rename requests through FUSE. It checks both successful ordinary creation and rejected reserved names. Run it with access to `/dev/fuse` and FUSE mount permission:
+
+```sh
+cargo test --locked --test fuse_namespace -- --ignored
+```
+
 ## Source layout
 
 | Path | Purpose |
 | --- | --- |
-| `src/lib.rs` | WORM policy calculations and tests |
-| `src/metadata.rs` | Metadata naming and user access policy |
+| `src/lib.rs` | Public module exports |
+| `src/policy/file.rs` | Append validation and retention deadlines |
+| `src/policy/entry.rs` | Immutable file and directory paths |
+| `src/policy/error.rs` | Policy error types |
+| `src/metadata/names.rs` | Reserved names and metadata filename derivation |
+| `src/metadata/access.rs` | Metadata user access rules |
+| `src/fuse/namespace.rs` | FUSE creation and rename enforcement |
+| `src/fuse/file_io.rs` | File I/O callback forwarding |
+| `src/fuse/directory_io.rs` | Directory I/O callback forwarding |
+| `src/fuse/attributes.rs` | Attribute and lookup callback forwarding |
+| `src/fuse/file_control.rs` | File control callback forwarding |
+| `src/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
+| `src/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
+| `tests/` | Policy tests and mounted FUSE integration tests |
+| `tests/support/` | Test filesystem, mount cleanup, and syscall helpers |
 | `src/main.rs` | Product banner and CLI argument handling |
 | `build.rs` | Build-time version validation and embedding |
 | `build.sh` | Build entry point |
