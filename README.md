@@ -57,6 +57,8 @@ retain_until = created_at + retention_seconds
 
 `check_delete(now)` returns `RetentionActive` before the deadline and succeeds at or after it. Append validation continues to use the LOCK boundary after retention expires. Timestamp and offset arithmetic return `Overflow` when their values exceed the supported range.
 
+`EntryPolicy` represents a file or directory. Its `check_rename()` policy rejects name changes and moves with `ImmutablePath`, including replacement and exchange operations. A created entry retains its name and parent directory, including after file retention expires.
+
 ## Verification
 
 ```sh
@@ -65,7 +67,7 @@ cargo clippy --offline --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, and arithmetic overflow.
+The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, immutable file and directory paths, and arithmetic overflow.
 
 ## Source layout
 

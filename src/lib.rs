@@ -7,6 +7,21 @@ pub enum PolicyError {
     Overflow,
     NotAtEnd,
     RetentionActive,
+    ImmutablePath,
+}
+
+/// Policy for a created filesystem entry with a fixed name and parent directory.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EntryPolicy {
+    File(FilePolicy),
+    Directory,
+}
+
+impl EntryPolicy {
+    /// Reject renaming and moving an entry, including replacement and exchange.
+    pub fn check_rename(&self) -> Result<(), PolicyError> {
+        Err(PolicyError::ImmutablePath)
+    }
 }
 
 /// Private fields prevent callers from changing the creation time or retention.
@@ -97,6 +112,27 @@ mod tests {
         assert_eq!(policy.check_delete(109), Err(PolicyError::RetentionActive));
         assert_eq!(policy.check_delete(110), Ok(()));
         assert_eq!(policy.check_delete(111), Ok(()));
+    }
+
+    #[test]
+    fn paths_remain_fixed_across_append_and_retention_expiry() {
+        let file = FilePolicy::new(100, 10).unwrap();
+        assert_eq!(file.check_delete(109), Err(PolicyError::RetentionActive));
+        assert_eq!(
+            EntryPolicy::File(file.clone()).check_rename(),
+            Err(PolicyError::ImmutablePath)
+        );
+
+        let appended = file.after_append(0, 20).unwrap();
+        assert_eq!(appended.check_delete(110), Ok(()));
+        assert_eq!(
+            EntryPolicy::File(appended).check_rename(),
+            Err(PolicyError::ImmutablePath)
+        );
+        assert_eq!(
+            EntryPolicy::Directory.check_rename(),
+            Err(PolicyError::ImmutablePath)
+        );
     }
 
     #[test]
