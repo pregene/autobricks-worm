@@ -17,7 +17,7 @@ Reviewed on 2026-09-23 against the official project sources below.
 
 ## macOS dependency review
 
-The macOS build uses Apple FSKit directly. The Rust dependency tree for macOS contains `libc`; `fuser` is a Linux dependency. The Swift adapter imports FSKit and Foundation; FSKit's Swift overlay also exposes ExtensionFoundation extension protocols.
+The macOS build uses Apple FSKit directly. The Rust dependency tree for macOS includes the storage dependencies listed below and `libc`; `fuser` is a Linux dependency. The Swift adapter imports FSKit and Foundation; FSKit's Swift overlay also exposes ExtensionFoundation extension protocols.
 
 Apple frameworks are system components provided by macOS. SDK use is governed by the [Xcode and Apple SDKs Agreement](https://www.apple.com/legal/sla/docs/xcode.pdf). They are used as operating-system libraries under the GPLv3 System Libraries provisions; see [GNU's explanation](https://www.gnu.org/licenses/gpl-faq.html#SystemLibraryException). The Autobricks source remains under the repository's GPLv3 license.
 
@@ -70,3 +70,12 @@ The following links identify the reviewed source revisions and local copies of t
 - [SnowflakePowered/winfsp-rs — 5342e76c146e](https://github.com/SnowflakePowered/winfsp-rs/blob/5342e76c146ee7239553be15cf4d281e3ecbf6c9/LICENSE.md): [local license](../licenses/winfsp-rs-LICENSE.md)
 - [dokan-dev/dokany — c7a59fc68ddc](https://github.com/dokan-dev/dokany/blob/c7a59fc68ddcfeb4474f2fe7f24be4eb264af6a2/license.lgpl.txt): [local license](../licenses/dokany-LGPL-3.0.txt)
 - [dokan-dev/dokany — c7a59fc68ddc](https://github.com/dokan-dev/dokany/blob/c7a59fc68ddcfeb4474f2fe7f24be4eb264af6a2/license.mit.txt): [local license](../licenses/dokany-MIT.txt)
+
+## Persistent storage dependencies
+
+- `sha2` 0.11.0, `digest`, `crypto-common`, `block-buffer`, `hybrid-array`, `typenum`, `cpufeatures`, and `const-oid`: MIT OR Apache-2.0. SHA-256 serialization is pinned to the sha2 0.11 format. [RustCrypto SHA-2](https://docs.rs/sha2/0.11.0/sha2/)
+- `serde`, `serde_core`, `serde_derive`, `serde_json`, and `itoa`: MIT OR Apache-2.0. `memchr` offers MIT or Unlicense, and `zmij` uses MIT. [Serde](https://github.com/serde-rs/serde), [serde_json](https://github.com/serde-rs/json)
+- `fs2` 0.4.3: MIT OR Apache-2.0, for process-level backing-store locks. [fs2](https://github.com/danburkert/fs2-rs)
+- Procedural macro dependencies `proc-macro2`, `quote`, and `syn`: MIT OR Apache-2.0; `unicode-ident` additionally includes Unicode-3.0 data terms.
+
+Version-specific upstream license notices for the macOS dependency graph are preserved in [licenses/rust](../licenses/rust/).

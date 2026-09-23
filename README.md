@@ -46,6 +46,20 @@ Autobricks WORM Filesystem 0.1.1 (C) 2026 Autobricks, Co.
 
 Running with no arguments or `--help` displays usage. `--version` displays the banner. The short options are `-h` and `-V`. Invalid arguments produce an error and a nonzero exit status.
 
+## Backing storage test
+
+Use a private, initially empty directory for backing data. The local test directory is `worm-storage/`.
+
+```sh
+./target/release/ab-worm storage ./worm-storage create example.log 3600
+printf 'first record\n' | ./target/release/ab-worm storage ./worm-storage append example.log
+printf 'second record\n' | ./target/release/ab-worm storage ./worm-storage append example.log
+./target/release/ab-worm storage ./worm-storage verify example.log
+./target/release/ab-worm storage ./worm-storage meta example.log
+```
+
+Each accepted append persists data, the standard SHA-256 checksum, incremental hash state, and LOCK. Retention starts at creation. Storage commands also support `read`, `mkdir`, and deletion after retention expires. The storage handle holds an exclusive process lock, and reopening recovers interrupted transactions. On Unix, the backing directory is restricted to its owner.
+
 ## Appendable WORM policy core
 
 `FilePolicy` provides in-memory policy calculations using three fields:

@@ -34,3 +34,7 @@ The upstream LICENSE assigns LGPL 2.1 to `include/`, `lib/`, and `meson.build`, 
 License terms, component mappings, revision-pinned sources, and local copies are recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).
 
 The macOS adapter calls Apple FSKit and Foundation through Swift, with a C ABI to the Rust policy library. Apple framework and SDK terms, Swift runtime terms, and Rust runtime notices are listed in the dependency review.
+
+## Persistent storage
+
+The Rust storage layer uses RustCrypto SHA-256, Serde JSON, and fs2. Their direct and transitive licenses are recorded in [the dependency review](docs/DEPENDENCY_LICENSES.md#persistent-storage-dependencies), with upstream license notices in [licenses/rust](licenses/rust/).
