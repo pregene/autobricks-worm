@@ -153,7 +153,10 @@ fn incomplete_append_rolls_back_only_uncommitted_tail_and_committed_append_survi
 #[test]
 fn interrupted_create_and_delete_are_recovered() {
     let dir = Temp::new();
-    let record = Store::open(&dir.0).unwrap().create("data", 0).unwrap();
+    let record = {
+        let mut store = Store::open(&dir.0).unwrap();
+        store.create("data", 0).unwrap()
+    };
     fs::remove_file(dir.0.join("data.meta")).unwrap();
     let journal = serde_json::json!({"operation":"Create", "name":"data", "record":record});
     fs::write(dir.0.join(".ab-worm.transaction"), journal.to_string()).unwrap();
