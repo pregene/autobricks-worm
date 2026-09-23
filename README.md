@@ -82,9 +82,13 @@ audit.log → audit.log.meta
 
 ## FUSE namespace adapter
 
-On Linux and macOS, `platform::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
+On Linux, `platform::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
 
 `NamespaceGuard::new(filesystem).mount(mountpoint, options)` mounts the wrapped filesystem and processes requests. Other callbacks forward to the backing implementation.
+
+## macOS FSKit adapter
+
+The macOS adapter uses Apple FSKit and the shared Rust namespace policy. It rejects reserved `.meta` creation and file, directory, and volume renames before dispatching to the backing volume. Native builds produce the FSKit adapter library alongside `ab-worm`.
 
 ## Verification
 
@@ -107,11 +111,10 @@ For macOS setup and native tests, see [macOS testing](docs/MACOS_TESTING.md):
 
 ```sh
 ./scripts/test-macos.sh
-./scripts/test-macos.sh --mount
 ```
 
 ## FUSE references and licenses
 
 FUSE and Rust `fuser` references, component licenses, and the original MIT notice are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The macFUSE, WinFsp, winfsp-rs, and Dokany license review is recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).
+The Apple SDK, Rust/Swift runtime, WinFsp, winfsp-rs, and Dokany license review is recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).

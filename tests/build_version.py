@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -47,6 +48,16 @@ class BuildVersionTest(unittest.TestCase):
             executable = root / "target" / "debug" / ("ab-worm.exe" if os.name == "nt" else "ab-worm")
             banner = subprocess.check_output([str(executable), "--version"], text=True)
             self.assertEqual(banner.strip(), f"Autobricks WORM Filesystem {expected} (C) 2026 Autobricks, Co.")
+
+            if sys.platform == "darwin":
+                swift = root / "src/macos/fskit/NamespaceGuard.swift"
+                saved = swift.read_text()
+                swift.write_text("invalid Swift source\n")
+                failed_swift = launch()
+                output, _ = failed_swift.communicate(timeout=180)
+                self.assertNotEqual(failed_swift.returncode, 0, output)
+                self.assertEqual((root / "VERSION").read_text().strip(), expected)
+                swift.write_text(saved)
 
             (root / "src" / "main.rs").write_text("invalid Rust source\n")
             failed = launch()

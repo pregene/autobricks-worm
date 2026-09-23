@@ -10,15 +10,14 @@ publish = false
 name = "ab-worm"
 path = "src/main.rs"
 
-[dependencies]
+[lib]
+crate-type = ["rlib", "staticlib"]
 
-[features]
-macos-fuse = ["fuser/libfuse"]
+[dependencies]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 fuser = { version = "=0.16.0", default-features = false }
 libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-fuser = { version = "=0.16.0", default-features = false, optional = true }
 libc = "0.2"

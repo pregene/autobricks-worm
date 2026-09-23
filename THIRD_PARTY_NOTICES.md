@@ -2,7 +2,7 @@
 
 ## FUSE development references
 
-Autobricks WORM Filesystem by Autobricks, Co. contains a Rust Appendable WORM policy core for LOCK advancement, creation-based retention, and deletion eligibility. Its Linux and macOS FUSE adapter adds reserved metadata name checks and rename restrictions to filesystem callbacks.
+Autobricks WORM Filesystem by Autobricks, Co. contains a Rust Appendable WORM policy core for LOCK advancement, creation-based retention, and deletion eligibility. Its Linux FUSE adapter adds reserved metadata name checks and rename restrictions to filesystem callbacks.
 
 ## Rust fuser — MIT
 
@@ -29,6 +29,8 @@ The callback signatures in `src/fuse/` follow the fuser Filesystem interface.
 
 The upstream LICENSE assigns LGPL 2.1 to `include/`, `lib/`, and `meson.build`, and GPL 2 to the remaining files.
 
-## macFUSE, WinFsp, winfsp-rs, and Dokany
+## Apple FSKit and platform dependencies
 
 License terms, component mappings, revision-pinned sources, and local copies are recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).
+
+The macOS adapter calls Apple FSKit and Foundation through Swift, with a C ABI to the Rust policy library. Apple framework and SDK terms, Swift runtime terms, and Rust runtime notices are listed in the dependency review.

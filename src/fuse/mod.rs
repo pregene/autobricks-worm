@@ -35,8 +35,6 @@ impl<F: Filesystem> NamespaceGuard<F> {
 }
 
 impl<F: Filesystem> Filesystem for NamespaceGuard<F> {
-    #[cfg(target_os = "macos")]
-    crate::macos::fuse::macos_callbacks!();
     lifecycle::lifecycle_callbacks!();
     namespace::namespace_callbacks!();
     attributes::attributes_callbacks!();

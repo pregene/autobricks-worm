@@ -1,7 +1,6 @@
-//! macOS build configuration.
+//! Apple FSKit integration.
 
-#[cfg(feature = "macos-fuse")]
-pub mod fuse;
+pub mod bridge;
 
 pub const NAME: &str = "macos";
 pub const EXECUTABLE_NAME: &str = "ab-worm";

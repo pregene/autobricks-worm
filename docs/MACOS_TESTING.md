@@ -1,44 +1,36 @@
 # macOS testing
 
-## Setup
+## Requirements
 
-Install the macFUSE runtime and pkg-config:
+- macOS 15.4 or later for Apple FSKit.
+- Apple developer tools with Swift and the macOS 15.4 or newer SDK.
+- Rust/Cargo and Python 3.
+
+Install Apple Command Line Tools if needed:
 
 ```sh
-brew install --cask macfuse
-brew install pkg-config
+xcode-select --install
 ```
 
-The macFUSE package installer uses administrator authentication. Its installer and macOS System Settings handle runtime authorization. The fuser 0.16 adapter uses macFUSE's device-descriptor interface and kernel backend. Follow the [official runtime setup instructions](https://github.com/macfuse/macfuse/wiki/Getting-Started) for that backend.
-
-## Build and policy tests
+## Tests
 
 ```sh
 ./scripts/test-macos.sh
 ```
 
-This command enables the `macos-fuse` Cargo feature, locates the installed `fuse.pc`, compiles the macOS adapter, runs policy tests, and runs Clippy.
+This runs Rust policy tests, Clippy, and native FSKit callback tests linked to the Rust policy library. The callback tests cover regular creation, reserved `.meta` names, invalid names, rename replacement, volume renaming, byte-preserving filename validation, and propagation of backend write failures.
 
-To build a versioned executable with the adapter enabled:
-
-```sh
-PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./build.sh --release --features macos-fuse
-```
-
-## Native mount test
-
-With the macFUSE kernel backend available:
+## Build
 
 ```sh
-./scripts/test-macos.sh --mount
+./build.sh --release --locked
+./target/release/ab-worm --version
 ```
 
-The test mounts an isolated fixture, exercises ordinary file, directory, link, and FIFO creation, and verifies that `.meta` creation and rename requests return `EPERM` before reaching the backing filesystem. The fixture is unmounted and its mountpoint removed when the test finishes.
+The native build produces `ab-worm`, `libautobricks_worm.a`, and `libab_worm_fskit.dylib` with its Swift module in `target/release/`. The Swift adapter links to Apple's installed FSKit and Foundation frameworks. The deployment target defaults to the Swift toolchain target, with a minimum of macOS 15.4; an explicit `MACOSX_DEPLOYMENT_TARGET` must also be supported by the Rust toolchain and its standard library.
 
-The macOS adapter additionally rejects exchange and volume-renaming callbacks and forwards extended timestamp queries.
+## Extension integration
 
-## Backend interface
+`GuardedFileSystem` wraps an `FSUnaryFileSystem` backend and returns a `NamespaceGuard` for each successfully loaded volume. The backend provides volume operations, read/write operations, and open/close operations. Namespace checks run through the Rust C ABI before creation dispatch.
 
-The adapter shares FUSE namespace checks with Linux, with macOS-specific callbacks in `src/macos/fuse.rs`.
-
-macFUSE's FSKit backend uses a different transport. Its [MFMount developer documentation](https://github.com/macfuse/macfuse/wiki/Getting-Started-%28Developer%29-%E2%80%90-MFMount.framework) describes the channel API, while the selected fuser version mounts through `fuse_mount_compat25` and reads requests from a file descriptor.
+Apple's [FSKit extension guide](https://developer.apple.com/documentation/fskit/building-a-passthrough-file-system) describes the containing app, `UnaryFileSystemExtension` entry point, filesystem entitlement, and extension registration. Users enable a registered extension under System Settings > General > Login Items & Extensions > File System Extensions.

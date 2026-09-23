@@ -1,6 +1,6 @@
 //! Appendable WORM policies and filesystem integration.
 
-#[cfg(any(target_os = "linux", all(target_os = "macos", feature = "macos-fuse")))]
+#[cfg(target_os = "linux")]
 pub mod fuse;
 
 #[cfg(target_os = "linux")]

@@ -9,6 +9,7 @@ import sys
 import tempfile
 
 from build_lock import exclusive_build_lock
+from build_macos import compile_adapter
 
 
 def main():
@@ -19,6 +20,9 @@ def main():
     parser.add_argument("--target")
     parser.add_argument("--features")
     options = parser.parse_args()
+    native_macos = sys.platform == "darwin" and (
+        options.target is None or options.target in ("aarch64-apple-darwin", "x86_64-apple-darwin")
+    )
     cargo_args = [flag for flag in ("--release", "--offline", "--locked")
                   if getattr(options, flag[2:])]
     if options.target:
@@ -38,13 +42,22 @@ def main():
         version = f"{major}.{minor}.{patch + 1}"
         env = dict(os.environ, AB_WORM_BUILD_VERSION=version)
         result = subprocess.run(
-            ["cargo", "build", "--bin", "ab-worm", *cargo_args],
+            ["cargo", "build", "--bin", "ab-worm", *(["--lib"] if native_macos else []), *cargo_args],
             cwd=root,
             env=env,
             check=False,
         )
         if result.returncode:
             return result.returncode
+        if native_macos:
+            target_dir = Path(env.get("CARGO_TARGET_DIR", root / "target"))
+            if not target_dir.is_absolute():
+                target_dir = root / target_dir
+            if options.target:
+                target_dir /= options.target
+            output_dir = target_dir / ("release" if options.release else "debug")
+            compile_adapter(root, output_dir, output_dir / "libautobricks_worm.a",
+                            env=env, target=options.target)
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", dir=root, prefix=".VERSION-", delete=False) as output:
@@ -63,6 +76,6 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Build failed: {error}", file=sys.stderr)
         sys.exit(1)

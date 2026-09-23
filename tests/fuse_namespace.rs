@@ -1,4 +1,4 @@
-#![cfg(any(target_os = "linux", all(target_os = "macos", feature = "macos-fuse")))]
+#![cfg(target_os = "linux")]
 
 mod support;
 
