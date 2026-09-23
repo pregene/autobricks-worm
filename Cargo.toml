@@ -1,0 +1,13 @@
+[package]
+name = "autobricks-worm"
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.85"
+description = "Appendable WORM policy core with immutable records and creation-based retention"
+publish = false
+
+[[bin]]
+name = "ab-worm"
+path = "src/main.rs"
+
+[dependencies]
