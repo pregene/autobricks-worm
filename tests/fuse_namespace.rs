@@ -2,7 +2,7 @@
 
 mod support;
 
-use autobricks_worm::fuse::NamespaceGuard;
+use autobricks_worm::linux::fuse::NamespaceGuard;
 use fuser::MountOption;
 use std::fs;
 use std::os::unix::fs::symlink;

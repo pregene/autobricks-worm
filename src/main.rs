@@ -1,5 +1,7 @@
 use std::process::ExitCode;
 
+use autobricks_worm::platform::EXECUTABLE_NAME;
+
 fn main() -> ExitCode {
     println!(
         "Autobricks WORM Filesystem {} (C) 2026 Autobricks, Co.",
@@ -11,7 +13,7 @@ fn main() -> ExitCode {
         [arg] if arg == "--help" || arg == "-h" => print_help(),
         [arg] if arg == "--version" || arg == "-V" => {}
         _ => {
-            eprintln!("Unsupported arguments. Run ab-worm --help.");
+            eprintln!("Unsupported arguments. Run {EXECUTABLE_NAME} --help.");
             return ExitCode::FAILURE;
         }
     }
@@ -20,7 +22,7 @@ fn main() -> ExitCode {
 
 fn print_help() {
     println!(
-        "Usage: ab-worm [--help | --version]\n\
+        "Usage: {EXECUTABLE_NAME} [--help | --version]\n\
          \nOptions:\n\
          \x20 -h, --help       Show usage\n\
          \x20 -V, --version    Show product version"

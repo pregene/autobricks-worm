@@ -23,7 +23,7 @@ macro_rules! namespace_callbacks {
             flags: i32,
             reply: ReplyCreate,
         ) {
-            if let Err(error) = $crate::fuse::namespace::check_name(name) {
+            if let Err(error) = $crate::linux::fuse::namespace::check_name(name) {
                 reply.error(error);
                 return;
             }
@@ -41,7 +41,7 @@ macro_rules! namespace_callbacks {
             rdev: u32,
             reply: ReplyEntry,
         ) {
-            if let Err(error) = $crate::fuse::namespace::check_name(name) {
+            if let Err(error) = $crate::linux::fuse::namespace::check_name(name) {
                 reply.error(error);
                 return;
             }
@@ -58,7 +58,7 @@ macro_rules! namespace_callbacks {
             umask: u32,
             reply: ReplyEntry,
         ) {
-            if let Err(error) = $crate::fuse::namespace::check_name(name) {
+            if let Err(error) = $crate::linux::fuse::namespace::check_name(name) {
                 reply.error(error);
                 return;
             }
@@ -73,7 +73,7 @@ macro_rules! namespace_callbacks {
             target: &Path,
             reply: ReplyEntry,
         ) {
-            if let Err(error) = $crate::fuse::namespace::check_name(link_name) {
+            if let Err(error) = $crate::linux::fuse::namespace::check_name(link_name) {
                 reply.error(error);
                 return;
             }
@@ -88,7 +88,7 @@ macro_rules! namespace_callbacks {
             newname: &OsStr,
             reply: ReplyEntry,
         ) {
-            if let Err(error) = $crate::fuse::namespace::check_name(newname) {
+            if let Err(error) = $crate::linux::fuse::namespace::check_name(newname) {
                 reply.error(error);
                 return;
             }

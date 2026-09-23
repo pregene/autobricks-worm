@@ -1,13 +1,14 @@
-"""Build ab-worm, then record its incremented version on success (Unix)."""
+"""Build ab-worm, then record its incremented version on success."""
 
 import argparse
-import fcntl
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
 import tempfile
+
+from build_lock import exclusive_build_lock
 
 
 def main():
@@ -23,8 +24,7 @@ def main():
         cargo_args.extend(["--target", options.target])
     root = Path(__file__).resolve().parent.parent
     # Keep the lock outside target/ so cargo clean cannot remove an active lock.
-    with (root / ".build.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with exclusive_build_lock(root / ".build.lock"):
         version_path = root / "VERSION"
         current = version_path.read_text().strip()
         if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", current):

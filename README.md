@@ -14,12 +14,31 @@ Each append preserves all previously committed records.
 
 ## Build
 
-Requirements: Rust/Cargo and Python 3 on Linux or macOS.
+Requirements: Rust/Cargo and Python 3.
+
+Linux and macOS:
 
 ```sh
 ./build.sh --release
 ./target/release/ab-worm --version
 ```
+
+Windows (PowerShell):
+
+```powershell
+.\build.ps1 --release
+.\target\release\ab-worm.exe --version
+```
+
+Rust selects the OS module at compile time:
+
+| Target OS | Module | Executable |
+| --- | --- | --- |
+| Linux | `src/linux/` | `ab-worm` |
+| macOS | `src/macos/` | `ab-worm` |
+| Windows | `src/windows/` | `ab-worm.exe` |
+
+The shared policy and metadata modules compile on all three targets. The Linux module contains the FUSE namespace adapter.
 
 ## CLI
 
@@ -73,7 +92,7 @@ audit.log → audit.log.meta
 
 ## FUSE namespace adapter
 
-On Linux, `fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
+On Linux, `linux::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
 
 `NamespaceGuard::new(filesystem).mount(mountpoint, options)` mounts the wrapped filesystem and processes requests. Other callbacks forward to the backing implementation.
 
@@ -83,6 +102,7 @@ On Linux, `fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its
 cargo test --offline
 cargo clippy --offline --all-targets -- -D warnings
 cargo fmt --check
+python tests/build_version.py
 ```
 
 The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, immutable file and directory paths, and arithmetic overflow.
@@ -97,24 +117,29 @@ cargo test --locked --test fuse_namespace -- --ignored
 
 | Path | Purpose |
 | --- | --- |
-| `src/lib.rs` | Public module exports |
+| `src/lib.rs` | Target OS selection and public module exports |
+| `src/linux/mod.rs` | Linux configuration and FUSE integration |
+| `src/macos/mod.rs` | macOS configuration |
+| `src/windows/mod.rs` | Windows configuration |
 | `src/policy/file.rs` | Append validation and retention deadlines |
 | `src/policy/entry.rs` | Immutable file and directory paths |
 | `src/policy/error.rs` | Policy error types |
 | `src/metadata/names.rs` | Reserved names and metadata filename derivation |
 | `src/metadata/access.rs` | Metadata user access rules |
-| `src/fuse/namespace.rs` | FUSE creation and rename enforcement |
-| `src/fuse/file_io.rs` | File I/O callback forwarding |
-| `src/fuse/directory_io.rs` | Directory I/O callback forwarding |
-| `src/fuse/attributes.rs` | Attribute and lookup callback forwarding |
-| `src/fuse/file_control.rs` | File control callback forwarding |
-| `src/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
-| `src/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
+| `src/linux/fuse/namespace.rs` | FUSE creation and rename enforcement |
+| `src/linux/fuse/file_io.rs` | File I/O callback forwarding |
+| `src/linux/fuse/directory_io.rs` | Directory I/O callback forwarding |
+| `src/linux/fuse/attributes.rs` | Attribute and lookup callback forwarding |
+| `src/linux/fuse/file_control.rs` | File control callback forwarding |
+| `src/linux/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
+| `src/linux/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
 | `tests/` | Policy tests and mounted FUSE integration tests |
 | `tests/support/` | Test filesystem, mount cleanup, and syscall helpers |
 | `src/main.rs` | Product banner and CLI argument handling |
 | `build.rs` | Build-time version validation and embedding |
-| `build.sh` | Build entry point |
+| `build.sh` | Linux and macOS build entry point |
+| `build.ps1` | Windows PowerShell build entry point |
+| `scripts/build_lock.py` | Native build locks for Unix and Windows |
 | `scripts/build.py` | Version increments and build coordination |
 | `VERSION` | Executable version |
 

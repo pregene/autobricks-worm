@@ -11,7 +11,7 @@ Autobricks WORM Filesystem by Autobricks, Co. contains a Rust Appendable WORM po
 - Upstream license: https://github.com/cberner/fuser/blob/v0.16.0/LICENSE.md
 - Original notice: [licenses/fuser-0.16.0-MIT.txt](licenses/fuser-0.16.0-MIT.txt)
 
-The callback signatures in `src/fuse/` follow the fuser Filesystem interface.
+The callback signatures in `src/linux/fuse/` follow the fuser Filesystem interface.
 
 ## Rust libc — MIT OR Apache-2.0
 
