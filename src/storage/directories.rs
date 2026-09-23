@@ -1,6 +1,6 @@
-use super::Store;
 use super::durable::sync_dir;
 use super::paths::private_dir;
+use super::{Store, invalid};
 use std::{fs, io};
 
 impl Store {
@@ -9,6 +9,9 @@ impl Store {
         let path = self.data_path(name)?;
         fs::create_dir(&path)?;
         private_dir(&path)?;
-        sync_dir(path.parent().unwrap())
+        sync_dir(
+            path.parent()
+                .ok_or_else(|| invalid("Storage path has no parent directory"))?,
+        )
     }
 }

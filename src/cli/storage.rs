@@ -31,7 +31,10 @@ pub fn run(args: &[String]) -> io::Result<()> {
         ));
     }
     let retention = if operation == "create" {
-        Some(rest[0].parse::<u64>().map_err(|_| {
+        let value = rest
+            .first()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Retention is required"))?;
+        Some(value.parse::<u64>().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Retention must be an unsigned number of seconds",
@@ -42,7 +45,12 @@ pub fn run(args: &[String]) -> io::Result<()> {
     };
     let mut store = Store::open(Path::new(root))?;
     match operation.as_str() {
-        "create" => show(&store.create(name, retention.unwrap())?),
+        "create" => {
+            let retention = retention.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "Retention is required")
+            })?;
+            show(&store.create(name, retention)?)
+        }
         "append" => {
             let mut input = io::stdin().lock();
             let mut buffer = [0u8; 65536];
@@ -51,7 +59,10 @@ pub fn run(args: &[String]) -> io::Result<()> {
                 if length == 0 {
                     break;
                 }
-                store.append(name, &buffer[..length])?;
+                let chunk = buffer.get(..length).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidData, "Input read exceeded buffer")
+                })?;
+                store.append(name, chunk)?;
             }
             show(&store.metadata(name)?)
         }
@@ -70,6 +81,9 @@ pub fn run(args: &[String]) -> io::Result<()> {
         }
         "delete" => store.delete(name),
         "mkdir" => store.mkdir(name),
-        _ => unreachable!(),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Invalid storage command",
+        )),
     }
 }

@@ -107,15 +107,18 @@ impl StorageFilesystem {
             .ok_or_else(|| io::Error::from(io::ErrorKind::NotFound))
     }
 
-    fn inode_for(&mut self, path: &str) -> u64 {
+    fn inode_for(&mut self, path: &str) -> io::Result<u64> {
         if let Some(ino) = self.inodes_by_path.get(path) {
-            return *ino;
+            return Ok(*ino);
         }
         let ino = self.next_inode;
-        self.next_inode += 1;
+        self.next_inode = self
+            .next_inode
+            .checked_add(1)
+            .ok_or_else(|| io::Error::other("Inode space exhausted"))?;
         self.paths_by_inode.insert(ino, path.to_string());
         self.inodes_by_path.insert(path.to_string(), ino);
-        ino
+        Ok(ino)
     }
 
     fn child_path(&self, parent: u64, name: &OsStr) -> io::Result<String> {
@@ -130,17 +133,17 @@ impl StorageFilesystem {
         })
     }
 
-    fn parent_inode(&mut self, path: &str) -> u64 {
+    fn parent_inode(&mut self, path: &str) -> io::Result<u64> {
         let Some((parent, _)) = path.rsplit_once('/') else {
-            return ROOT_INO;
+            return Ok(ROOT_INO);
         };
         self.inode_for(parent)
     }
 
     fn attr_for_path(&mut self, path: &str) -> io::Result<FileAttr> {
         let entry = self.store.entry(path)?;
-        let ino = self.inode_for(path);
-        Ok(attr(ino, &entry))
+        let ino = self.inode_for(path)?;
+        attr(ino, &entry)
     }
 
     fn reply_entry_for_path(&mut self, path: &str, reply: ReplyEntry) {
@@ -362,18 +365,27 @@ impl Filesystem for StorageFilesystem {
                 return;
             }
         };
+        let parent = match self.parent_inode(&path) {
+            Ok(parent) => parent,
+            Err(error) => {
+                reply.error(errno(&error));
+                return;
+            }
+        };
         let mut rows = vec![
             (ino, FileType::Directory, ".".to_string()),
-            (
-                self.parent_inode(&path),
-                FileType::Directory,
-                "..".to_string(),
-            ),
+            (parent, FileType::Directory, "..".to_string()),
         ];
         match self.store.entries(&path) {
             Ok(entries) => {
                 for entry in entries {
-                    let ino = self.inode_for(&entry.name);
+                    let ino = match self.inode_for(&entry.name) {
+                        Ok(ino) => ino,
+                        Err(error) => {
+                            reply.error(errno(&error));
+                            return;
+                        }
+                    };
                     let kind = if entry.directory {
                         FileType::Directory
                     } else {
@@ -395,7 +407,14 @@ impl Filesystem for StorageFilesystem {
         }
         for (index, (ino, kind, name)) in rows.into_iter().enumerate().skip(offset.max(0) as usize)
         {
-            if reply.add(ino, index as i64 + 1, kind, name) {
+            let Some(next_offset) = i64::try_from(index)
+                .ok()
+                .and_then(|value| value.checked_add(1))
+            else {
+                reply.error(EIO);
+                return;
+            };
+            if reply.add(ino, next_offset, kind, name) {
                 break;
             }
         }
@@ -429,15 +448,19 @@ impl Filesystem for StorageFilesystem {
     }
 }
 
-fn attr(ino: u64, entry: &Entry) -> FileAttr {
+fn attr(ino: u64, entry: &Entry) -> io::Result<FileAttr> {
     let kind = if entry.directory {
         FileType::Directory
     } else {
         FileType::RegularFile
     };
-    let time = UNIX_EPOCH + Duration::from_secs(entry.modified_at);
-    let created = UNIX_EPOCH + Duration::from_secs(entry.created_at);
-    FileAttr {
+    let time = UNIX_EPOCH
+        .checked_add(Duration::from_secs(entry.modified_at))
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid modified time"))?;
+    let created = UNIX_EPOCH
+        .checked_add(Duration::from_secs(entry.created_at))
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid creation time"))?;
+    Ok(FileAttr {
         ino,
         size: entry.size,
         blocks: entry.size.div_ceil(512),
@@ -459,7 +482,7 @@ fn attr(ino: u64, entry: &Entry) -> FileAttr {
         rdev: 0,
         blksize: 4096,
         flags: 0,
-    }
+    })
 }
 
 fn errno(error: &io::Error) -> c_int {

@@ -13,7 +13,10 @@ pub fn check_user_entry_name(name: &OsStr) -> Result<(), PolicyError> {
     {
         return Err(PolicyError::InvalidName);
     }
-    if bytes.len() >= 5 && bytes[bytes.len() - 5..].eq_ignore_ascii_case(b".meta") {
+    if bytes
+        .get(bytes.len().saturating_sub(5)..)
+        .is_some_and(|suffix| suffix.eq_ignore_ascii_case(b".meta"))
+    {
         return Err(PolicyError::ReservedName);
     }
     Ok(())

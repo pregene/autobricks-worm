@@ -18,7 +18,7 @@ fn main() -> ExitCode {
         .is_some_and(|arg| arg == "mount" || arg == "unmount")
     {
         eprintln!("{banner}");
-        let result = if args[0] == "mount" {
+        let result = if args.first().is_some_and(|arg| arg == "mount") {
             cli::mount::run(&args)
         } else {
             cli::mount::unmount(&args)

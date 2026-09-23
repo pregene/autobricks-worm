@@ -20,7 +20,10 @@ impl Store {
                 "File or metadata already exists",
             ));
         }
-        if !path.parent().unwrap().is_dir() {
+        let parent = path
+            .parent()
+            .ok_or_else(|| invalid("Storage path has no parent directory"))?;
+        if !parent.is_dir() {
             return Err(invalid("Parent directory does not exist"));
         }
         let record = Record::new(now()?, retention_seconds)?;
@@ -95,7 +98,10 @@ impl Store {
             if n == 0 {
                 break;
             }
-            hasher.update(&buffer[..n]);
+            let chunk = buffer
+                .get(..n)
+                .ok_or_else(|| invalid("File read exceeded verification buffer"))?;
+            hasher.update(chunk);
         }
         if record::hex(&hasher.finalize()) != record.checksum {
             return Err(invalid("File checksum mismatch"));

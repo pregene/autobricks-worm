@@ -4,7 +4,7 @@ Autobricks WORM is an appendable WORM (Write Once, Read Many) filesystem.
 Committed bytes cannot be overwritten, while new bytes can be appended at the
 current lock boundary.
 
-The command-line executable is `ab-worm`. Current version: `0.1.6`.
+The command-line executable is `ab-worm`. Current version: `0.1.7`.
 
 ## Status
 

@@ -50,8 +50,18 @@ impl Record {
             .map_err(|_| invalid("Invalid SHA-256 state length"))?;
         // sha2 0.11 serialization: 32 state bytes, 8-byte LE block count,
         // followed by the block buffer position and pending bytes.
-        let blocks = u64::from_le_bytes(state[32..40].try_into().unwrap());
-        let position = u64::from(state[40]);
+        let block_bytes = state
+            .get(32..40)
+            .ok_or_else(|| invalid("Invalid SHA-256 state block count"))?
+            .try_into()
+            .map_err(|_| invalid("Invalid SHA-256 state block count"))?;
+        let blocks = u64::from_le_bytes(block_bytes);
+        let position = u64::from(
+            state
+                .get(40)
+                .copied()
+                .ok_or_else(|| invalid("Invalid SHA-256 state position"))?,
+        );
         if blocks.checked_mul(64).and_then(|n| n.checked_add(position)) != Some(self.lock_offset) {
             return Err(invalid("SHA-256 state length does not match LOCK"));
         }

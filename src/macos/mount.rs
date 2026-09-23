@@ -37,7 +37,10 @@ pub fn mount(options: MountOptions) -> io::Result<()> {
     }
     let source = options.source.canonicalize()?;
     let executable = std::env::current_exe()?;
-    let app = executable.parent().unwrap().join("Autobricks WORM.app");
+    let executable_dir = executable
+        .parent()
+        .ok_or_else(|| io::Error::other("Executable path has no parent directory"))?;
+    let app = executable_dir.join("Autobricks WORM.app");
     let extension = app.join("Contents/Extensions/AutobricksWORM.appex");
     if !extension.is_dir() {
         return Err(io::Error::other(

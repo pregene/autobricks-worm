@@ -62,7 +62,10 @@ impl Store {
                     }
                     fs::remove_file(&path)?;
                 }
-                sync_dir(path.parent().unwrap())?;
+                sync_dir(
+                    path.parent()
+                        .ok_or_else(|| invalid("Storage path has no parent directory"))?,
+                )?;
             }
             Transaction::Append {
                 name,
@@ -108,7 +111,10 @@ impl Store {
                 if meta.try_exists()? {
                     fs::remove_file(&meta)?;
                 }
-                sync_dir(path.parent().unwrap())?;
+                sync_dir(
+                    path.parent()
+                        .ok_or_else(|| invalid("Storage path has no parent directory"))?,
+                )?;
             }
         }
         self.finish()

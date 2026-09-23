@@ -41,7 +41,12 @@ fn response(result: io::Result<Value>) -> *mut c_char {
             json!({"error": code, "message": error.to_string()})
         }
     };
-    CString::new(value.to_string()).unwrap().into_raw()
+    match CString::new(value.to_string()) {
+        Ok(response) => response.into_raw(),
+        Err(_) => c"{\"error\":5,\"message\":\"Response encoding failed\"}"
+            .to_owned()
+            .into_raw(),
+    }
 }
 
 /// Open a storage handle. Returns null on failure and sets a JSON error response.

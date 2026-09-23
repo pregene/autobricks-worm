@@ -46,7 +46,10 @@ impl Store {
         file.sync_all()?;
         drop(file);
         fs::rename(&stage, path)?;
-        sync_dir(path.parent().unwrap())?;
+        let parent = path
+            .parent()
+            .ok_or_else(|| invalid("Storage path has no parent directory"))?;
+        sync_dir(parent)?;
         if path.parent() != Some(self.root.as_path()) {
             sync_dir(&self.root)?;
         }
