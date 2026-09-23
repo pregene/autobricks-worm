@@ -57,7 +57,19 @@ retain_until = created_at + retention_seconds
 
 `check_delete(now)` returns `RetentionActive` before the deadline and succeeds at or after it. Append validation continues to use the LOCK boundary after retention expires. Timestamp and offset arithmetic return `Overflow` when their values exceed the supported range.
 
-`EntryPolicy` represents a file or directory. Its `check_rename()` policy rejects name changes and moves with `ImmutablePath`, including replacement and exchange operations. A created entry retains its name and parent directory, including after file retention expires.
+`EntryPolicy` represents a file, directory, or metadata entry. Its `check_rename()` policy rejects name changes and moves with `ImmutablePath`, including replacement and exchange operations. A created entry retains its name and parent directory, including after file retention expires.
+
+## Metadata policy
+
+The metadata policy derives a sibling name by appending `.meta` to the complete data filename:
+
+```text
+audit.log → audit.log.meta
+```
+
+`metadata::check_user_access()` accepts reads and attribute queries. It returns `ReadOnlyMetadata` for user creation, writes, truncation, deletion, renaming, attribute changes, and link creation.
+
+`metadata::check_user_entry_name()` reserves the `.meta` suffix, case-insensitively, for metadata entries. It also rejects empty names, `.` and `..`, path separators, and null bytes. `metadata::name_for()` applies these checks before deriving the metadata filename.
 
 ## Verification
 
@@ -74,6 +86,7 @@ The policy tests cover fixed retention across appends, rejection of overwrites a
 | Path | Purpose |
 | --- | --- |
 | `src/lib.rs` | WORM policy calculations and tests |
+| `src/metadata.rs` | Metadata naming and user access policy |
 | `src/main.rs` | Product banner and CLI argument handling |
 | `build.rs` | Build-time version validation and embedding |
 | `build.sh` | Build entry point |

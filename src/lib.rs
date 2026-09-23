@@ -2,12 +2,17 @@
 //!
 //! Timestamps are UTC Unix seconds supplied by the caller.
 
+pub mod metadata;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PolicyError {
     Overflow,
     NotAtEnd,
     RetentionActive,
     ImmutablePath,
+    ReadOnlyMetadata,
+    ReservedName,
+    InvalidName,
 }
 
 /// Policy for a created filesystem entry with a fixed name and parent directory.
@@ -15,6 +20,7 @@ pub enum PolicyError {
 pub enum EntryPolicy {
     File(FilePolicy),
     Directory,
+    Metadata,
 }
 
 impl EntryPolicy {
