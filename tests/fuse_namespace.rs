@@ -1,8 +1,8 @@
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", all(target_os = "macos", feature = "macos-fuse")))]
 
 mod support;
 
-use autobricks_worm::linux::fuse::NamespaceGuard;
+use autobricks_worm::platform::fuse::NamespaceGuard;
 use fuser::MountOption;
 use std::fs;
 use std::os::unix::fs::symlink;
@@ -17,7 +17,7 @@ fn assert_denied(result: std::io::Result<()>) {
 }
 
 #[test]
-#[ignore = "Requires Linux /dev/fuse and permission to mount a FUSE filesystem"]
+#[ignore = "Requires a working FUSE runtime and permission to mount a filesystem"]
 fn mounted_namespace_rejects_reserved_names_before_backend_dispatch() {
     let path = std::env::temp_dir().join(format!(
         "ab-worm-fuse-{}-{}",
@@ -28,17 +28,18 @@ fn mounted_namespace_rejects_reserved_names_before_backend_dispatch() {
             .as_nanos()
     ));
     fs::create_dir(&path).unwrap();
+    let mut mount = Mount {
+        session: None,
+        path,
+    };
     let state = Arc::new(Mutex::new(State::default()));
     let session = fuser::spawn_mount2(
         NamespaceGuard::new(Fixture(state.clone())),
-        &path,
+        &mount.path,
         &[MountOption::FSName("ab-worm-test".into())],
     )
     .expect("mount FUSE test filesystem");
-    let mount = Mount {
-        session: Some(session),
-        path,
-    };
+    mount.session = Some(session);
     let root = &mount.path;
 
     // Positive controls: the backing fixture accepts ordinary creation paths.

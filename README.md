@@ -38,7 +38,7 @@ Rust selects the OS module at compile time:
 | macOS | `src/macos/` | `ab-worm` |
 | Windows | `src/windows/` | `ab-worm.exe` |
 
-The shared policy and metadata modules compile on all three targets. The Linux module contains the FUSE namespace adapter.
+The shared policy and metadata modules compile on all three targets. Linux and macOS expose the shared FUSE namespace adapter through their OS modules. macOS enables it with the `macos-fuse` feature.
 
 ## CLI
 
@@ -92,7 +92,7 @@ audit.log → audit.log.meta
 
 ## FUSE namespace adapter
 
-On Linux, `linux::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
+On Linux and macOS, `platform::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
 
 `NamespaceGuard::new(filesystem).mount(mountpoint, options)` mounts the wrapped filesystem and processes requests. Other callbacks forward to the backing implementation.
 
@@ -107,10 +107,17 @@ python tests/build_version.py
 
 The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, immutable file and directory paths, and arithmetic overflow.
 
-The Linux mount test exercises `fopen()`, directory creation, symbolic links, hard links, FIFO creation, and rename requests through FUSE. It checks both successful ordinary creation and rejected reserved names. Run it with access to `/dev/fuse` and FUSE mount permission:
+The FUSE mount test exercises `fopen()`, directory creation, symbolic links, hard links, FIFO creation, and rename requests through FUSE. It checks both successful ordinary creation and rejected reserved names. On Linux, run it with access to `/dev/fuse` and FUSE mount permission:
 
 ```sh
 cargo test --locked --test fuse_namespace -- --ignored
+```
+
+For macOS setup and native tests, see [macOS testing](docs/MACOS_TESTING.md):
+
+```sh
+./scripts/test-macos.sh
+./scripts/test-macos.sh --mount
 ```
 
 ## Source layout
@@ -120,19 +127,21 @@ cargo test --locked --test fuse_namespace -- --ignored
 | `src/lib.rs` | Target OS selection and public module exports |
 | `src/linux/mod.rs` | Linux configuration and FUSE integration |
 | `src/macos/mod.rs` | macOS configuration |
+| `src/macos/fuse.rs` | macOS FUSE callbacks and adapter export |
+| `src/linux/fuse.rs` | Linux FUSE adapter export |
 | `src/windows/mod.rs` | Windows configuration |
 | `src/policy/file.rs` | Append validation and retention deadlines |
 | `src/policy/entry.rs` | Immutable file and directory paths |
 | `src/policy/error.rs` | Policy error types |
 | `src/metadata/names.rs` | Reserved names and metadata filename derivation |
 | `src/metadata/access.rs` | Metadata user access rules |
-| `src/linux/fuse/namespace.rs` | FUSE creation and rename enforcement |
-| `src/linux/fuse/file_io.rs` | File I/O callback forwarding |
-| `src/linux/fuse/directory_io.rs` | Directory I/O callback forwarding |
-| `src/linux/fuse/attributes.rs` | Attribute and lookup callback forwarding |
-| `src/linux/fuse/file_control.rs` | File control callback forwarding |
-| `src/linux/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
-| `src/linux/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
+| `src/fuse/namespace.rs` | FUSE creation and rename enforcement |
+| `src/fuse/file_io.rs` | File I/O callback forwarding |
+| `src/fuse/directory_io.rs` | Directory I/O callback forwarding |
+| `src/fuse/attributes.rs` | Attribute and lookup callback forwarding |
+| `src/fuse/file_control.rs` | File control callback forwarding |
+| `src/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
+| `src/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
 | `tests/` | Policy tests and mounted FUSE integration tests |
 | `tests/support/` | Test filesystem, mount cleanup, and syscall helpers |
 | `src/main.rs` | Product banner and CLI argument handling |
@@ -141,8 +150,11 @@ cargo test --locked --test fuse_namespace -- --ignored
 | `build.ps1` | Windows PowerShell build entry point |
 | `scripts/build_lock.py` | Native build locks for Unix and Windows |
 | `scripts/build.py` | Version increments and build coordination |
+| `scripts/test-macos.sh` | macOS adapter and mount test commands |
 | `VERSION` | Executable version |
 
 ## FUSE references and licenses
 
 FUSE and Rust `fuser` references, component licenses, and the original MIT notice are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The macFUSE, WinFsp, winfsp-rs, and Dokany license review is recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).

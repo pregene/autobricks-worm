@@ -17,11 +17,14 @@ def main():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--locked", action="store_true")
     parser.add_argument("--target")
+    parser.add_argument("--features")
     options = parser.parse_args()
     cargo_args = [flag for flag in ("--release", "--offline", "--locked")
                   if getattr(options, flag[2:])]
     if options.target:
         cargo_args.extend(["--target", options.target])
+    if options.features:
+        cargo_args.extend(["--features", options.features])
     root = Path(__file__).resolve().parent.parent
     # Keep the lock outside target/ so cargo clean cannot remove an active lock.
     with exclusive_build_lock(root / ".build.lock"):

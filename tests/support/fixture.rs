@@ -97,12 +97,17 @@ impl Filesystem for Fixture {
         _: &Request<'_>,
         parent: u64,
         name: &OsStr,
-        _: u32,
+        mode: u32,
         _: u32,
         _: u32,
         reply: ReplyEntry,
     ) {
-        let entry = self.add(parent, name, FileType::NamedPipe);
+        let kind = if u64::from(mode) & u64::from(libc::S_IFMT) == u64::from(libc::S_IFIFO) {
+            FileType::NamedPipe
+        } else {
+            FileType::RegularFile
+        };
+        let entry = self.add(parent, name, kind);
         reply.entry(&Duration::ZERO, &entry, 0);
     }
 
