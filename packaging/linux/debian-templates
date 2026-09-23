@@ -1,0 +1,7 @@
+Template: ab-worm/retain-days
+Type: string
+Default: 365
+Description: Retention period in days for new WORM files:
+ Autobricks WORM will mount /worm-storage at /mnt/worm-storage by default.
+ New files created through the mount will use this retention period.
+ The source and mount paths can be changed later in /etc/default/ab-worm.

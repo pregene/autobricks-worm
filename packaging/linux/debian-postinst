@@ -1,0 +1,46 @@
+#!/bin/sh
+set -e
+
+. /usr/share/debconf/confmodule
+
+db_get ab-worm/retain-days
+RETAIN_DAYS="$RET"
+SOURCE_PATH=/worm-storage
+MOUNT_PATH=/mnt/worm-storage
+
+if [ -f /etc/default/ab-worm ]; then
+  . /etc/default/ab-worm
+  SOURCE_PATH="${AB_WORM_SOURCE_PATH:-$SOURCE_PATH}"
+  MOUNT_PATH="${AB_WORM_MOUNT_PATH:-$MOUNT_PATH}"
+fi
+
+case "$RETAIN_DAYS" in
+  ''|*[!0-9]*)
+    echo "Invalid retention days: $RETAIN_DAYS" >&2
+    exit 1
+    ;;
+esac
+
+install -d -o root -g root -m 0700 "$SOURCE_PATH"
+install -d -o root -g root -m 0755 "$MOUNT_PATH"
+install -d -o root -g root -m 0755 /etc/default
+
+cat >/etc/default/ab-worm <<EOF
+AB_WORM_RETAIN_DAYS=$RETAIN_DAYS
+AB_WORM_SOURCE_PATH=$SOURCE_PATH
+AB_WORM_MOUNT_PATH=$MOUNT_PATH
+EOF
+chmod 0644 /etc/default/ab-worm
+
+if [ -f /etc/fuse.conf ] && ! grep -Eq '^[[:space:]]*user_allow_other([[:space:]]|$)' /etc/fuse.conf; then
+  cp /etc/fuse.conf /etc/fuse.conf.ab-worm.bak
+  printf '\nuser_allow_other\n' >>/etc/fuse.conf
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+  systemctl enable ab-worm.service || true
+  systemctl restart ab-worm.service || true
+fi
+
+db_stop

@@ -1,0 +1,18 @@
+[Unit]
+Description=Autobricks WORM Filesystem
+Documentation=man:systemd.service(5)
+After=local-fs.target
+StartLimitBurst=5
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/ab-worm
+ExecStartPre=/usr/bin/install -d -o root -g root -m 0700 ${AB_WORM_SOURCE_PATH}
+ExecStartPre=/usr/bin/install -d -o root -g root -m 0755 ${AB_WORM_MOUNT_PATH}
+ExecStart=/usr/bin/ab-worm mount ${AB_WORM_SOURCE_PATH} ${AB_WORM_MOUNT_PATH} --retain ${AB_WORM_RETAIN_DAYS} --allow-other
+ExecStop=/usr/bin/ab-worm unmount ${AB_WORM_MOUNT_PATH}
+Restart=on-failure
+RestartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -6,8 +6,31 @@ fn parse(args: &[&str]) -> std::io::Result<MountOptions> {
 fn retention_is_required_and_expressed_in_days() {
     let options = parse(&["mount", "source", "target", "--retain", "365"]).unwrap();
     assert_eq!(options.retention_days, 365);
+    assert!(!options.allow_other);
+    let options = parse(&[
+        "mount",
+        "source",
+        "target",
+        "--retain",
+        "365",
+        "--allow-other",
+    ])
+    .unwrap();
+    assert_eq!(options.retention_days, 365);
+    assert!(options.allow_other);
     assert!(parse(&["mount", "source", "target"]).is_err());
     assert!(parse(&["mount", "source", "target", "--retain", "-1"]).is_err());
+    assert!(
+        parse(&[
+            "mount",
+            "source",
+            "target",
+            "--allow-other",
+            "--retain",
+            "365"
+        ])
+        .is_err()
+    );
     assert!(
         parse(&[
             "mount",

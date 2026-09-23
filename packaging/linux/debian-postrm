@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+fi
+
+if [ "${1:-}" = "purge" ]; then
+  MOUNT_PATH=/mnt/worm-storage
+  if [ -f /etc/default/ab-worm ]; then
+    . /etc/default/ab-worm
+    MOUNT_PATH="${AB_WORM_MOUNT_PATH:-$MOUNT_PATH}"
+  fi
+  rm -f /etc/default/ab-worm
+  rmdir "$MOUNT_PATH" 2>/dev/null || true
+fi

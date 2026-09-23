@@ -7,7 +7,7 @@ pub use storage::run;
 pub fn help(executable: &str) {
     println!(
         "Usage: {executable} [--help | --version]\n\
-        \x20      {executable} mount SOURCE MOUNTPOINT --retain DAYS\n\
+        \x20      {executable} mount SOURCE MOUNTPOINT --retain DAYS [--allow-other]\n\
         \x20      {executable} unmount MOUNTPOINT\n\
         \x20      {executable} storage ROOT create PATH RETENTION_SECONDS\n\
         \x20      {executable} storage ROOT append PATH < INPUT\n\

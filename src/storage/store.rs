@@ -8,6 +8,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+const STORAGE_FORMAT: &str = "Autobricks WORM storage format v1";
+const LEGACY_STORAGE_FORMAT: &str = "Autobricks WORM storage v1";
+
 /// Keep this handle alive for the lifetime of a mounted volume or storage command.
 /// Backing files are private to the service account.
 pub struct Store {
@@ -24,9 +27,12 @@ impl Store {
         }
         let root = root.canonicalize()?;
         let marker = root.join(".ab-worm.store");
+        let mut legacy_marker = false;
         if marker.try_exists()? {
             let format: String = read_json(&marker)?;
-            if format != "Autobricks WORM storage v1" {
+            if format == LEGACY_STORAGE_FORMAT {
+                legacy_marker = true;
+            } else if format != STORAGE_FORMAT {
                 return Err(invalid("Unsupported storage format"));
             }
         } else {
@@ -57,8 +63,8 @@ impl Store {
             _lock: lock,
             _exclusive: std::marker::PhantomData,
         };
-        if !marker.try_exists()? {
-            store.atomic_json(&marker, &"Autobricks WORM storage v1")?;
+        if !marker.try_exists()? || legacy_marker {
+            store.atomic_json(&marker, &STORAGE_FORMAT)?;
         }
         store.recover()?;
         Ok(store)

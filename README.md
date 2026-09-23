@@ -25,6 +25,8 @@ Linux and macOS:
 ./target/release/ab-worm --version
 ```
 
+For Ubuntu service installation with `/worm-storage` mounted at `/mnt/worm-storage`, see [INSTALL.md](INSTALL.md) and [HOWTO.md](HOWTO.md).
+
 Windows (PowerShell):
 
 ```powershell
