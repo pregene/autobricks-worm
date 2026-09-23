@@ -9,6 +9,11 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 if [ "${1:-}" = "purge" ]; then
+  if [ -r /usr/share/debconf/confmodule ]; then
+    . /usr/share/debconf/confmodule
+    db_purge || true
+  fi
+
   MOUNT_PATH=/mnt/worm-storage
   if [ -f /etc/default/ab-worm ]; then
     . /etc/default/ab-worm
