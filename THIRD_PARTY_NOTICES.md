@@ -31,6 +31,8 @@ The upstream LICENSE assigns LGPL 2.1 to `include/`, `lib/`, and `meson.build`, 
 
 ## Apple FSKit and platform dependencies
 
+Local reference: [Apple FSKit license information](licenses/apple-FSKit-NOTICE.md).
+
 License terms, component mappings, revision-pinned sources, and local copies are recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).
 
 The macOS adapter calls Apple FSKit and Foundation through Swift, with a C ABI to the Rust policy library. Apple framework and SDK terms, Swift runtime terms, and Rust runtime notices are listed in the dependency review.

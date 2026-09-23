@@ -17,6 +17,8 @@ Reviewed on 2026-09-23 against the official project sources below.
 
 ## macOS dependency review
 
+The local [Apple FSKit license notice](../licenses/apple-FSKit-NOTICE.md) records the applicable Apple agreements and official sources.
+
 The macOS build uses Apple FSKit directly. The Rust dependency tree for macOS includes the storage dependencies listed below and `libc`; `fuser` is a Linux dependency. The containing app imports AppKit. The Swift adapter imports FSKit and Foundation; FSKit's Swift overlay also exposes ExtensionFoundation extension protocols.
 
 Apple frameworks are system components provided by macOS. SDK use is governed by the [Xcode and Apple SDKs Agreement](https://www.apple.com/legal/sla/docs/xcode.pdf). They are used as operating-system libraries under the GPLv3 System Libraries provisions; see [GNU's explanation](https://www.gnu.org/licenses/gpl-faq.html#SystemLibraryException). The Autobricks source remains under the repository's GPLv3 license.
