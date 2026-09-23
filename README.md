@@ -16,6 +16,8 @@ Each append preserves all previously committed records.
 
 Requirements: Rust/Cargo and Python 3.
 
+macOS filesystem mount testing additionally requires macOS 26+, Apple Developer Program membership (or an enrolled team), and a signed FSKit extension. See [macOS development and testing](docs/MACOS_TESTING.md) for account and signing setup.
+
 Linux and macOS:
 
 ```sh

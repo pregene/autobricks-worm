@@ -10,6 +10,7 @@ import tempfile
 
 from build_lock import exclusive_build_lock
 from build_macos import compile_adapter
+from package_macos import build_app
 
 
 def main():
@@ -58,6 +59,7 @@ def main():
             output_dir = target_dir / ("release" if options.release else "debug")
             compile_adapter(root, output_dir, output_dir / "libautobricks_worm.a",
                             env=env, target=options.target)
+            build_app(root, output_dir, version, env=env, target=options.target)
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", dir=root, prefix=".VERSION-", delete=False) as output:

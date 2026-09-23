@@ -26,3 +26,17 @@ target
 __pycache__/
 /worm-storage/
 /worm-mount/
+
+# Local credentials and developer settings
+.env
+.env.*
+*.p12
+*.pfx
+*.key
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.certSigningRequest
+*.keychain-db
+xcuserdata/
+.DS_Store

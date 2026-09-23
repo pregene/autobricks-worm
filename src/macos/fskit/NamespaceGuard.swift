@@ -21,6 +21,11 @@ public final class NamespaceGuard: FSVolume, FSVolume.Operations, FSVolume.ReadW
 
     static var denied: NSError { NSError(domain: NSPOSIXErrorDomain, code: Int(EPERM)) }
 
+    @available(macOS 26.0, *)
+    public var enableOpenUnlinkEmulation: Bool {
+        get { false }
+        set { }
+    }
     public var maximumLinkCount: Int { backend.maximumLinkCount }
     public var maximumNameLength: Int { backend.maximumNameLength }
     public var restrictsOwnershipChanges: Bool { backend.restrictsOwnershipChanges }

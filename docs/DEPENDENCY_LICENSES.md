@@ -6,7 +6,7 @@ Reviewed on 2026-09-23 against the official project sources below.
 | --- | --- | --- |
 | Rust fuser 0.16.0 | MIT | Linux Rust FUSE interface |
 | Linux libfuse | LGPL 2.1 / GPL 2 by component | FUSE libraries and tools |
-| Apple FSKit, Foundation, ExtensionFoundation | Apple system frameworks; Xcode and Apple SDKs Agreement for SDK use | Native macOS filesystem adapter and extension protocols |
+| Apple FSKit, Foundation, ExtensionFoundation, AppKit | Apple system frameworks; Xcode and Apple SDKs Agreement for SDK use | Native macOS filesystem adapter and extension protocols |
 | Apple libSystem and Objective-C runtime | Apple system components; component-specific open-source notices | Native runtime services |
 | Swift standard library and overlays | Apache-2.0 with Runtime Library Exception for upstream Swift components | Swift FSKit adapter runtime |
 | Rust standard library | MIT OR Apache-2.0, with component-specific notices | Shared policy runtime |
@@ -17,7 +17,7 @@ Reviewed on 2026-09-23 against the official project sources below.
 
 ## macOS dependency review
 
-The macOS build uses Apple FSKit directly. The Rust dependency tree for macOS includes the storage dependencies listed below and `libc`; `fuser` is a Linux dependency. The Swift adapter imports FSKit and Foundation; FSKit's Swift overlay also exposes ExtensionFoundation extension protocols.
+The macOS build uses Apple FSKit directly. The Rust dependency tree for macOS includes the storage dependencies listed below and `libc`; `fuser` is a Linux dependency. The containing app imports AppKit. The Swift adapter imports FSKit and Foundation; FSKit's Swift overlay also exposes ExtensionFoundation extension protocols.
 
 Apple frameworks are system components provided by macOS. SDK use is governed by the [Xcode and Apple SDKs Agreement](https://www.apple.com/legal/sla/docs/xcode.pdf). They are used as operating-system libraries under the GPLv3 System Libraries provisions; see [GNU's explanation](https://www.gnu.org/licenses/gpl-faq.html#SystemLibraryException). The Autobricks source remains under the repository's GPLv3 license.
 

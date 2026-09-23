@@ -62,3 +62,48 @@ GuardedFileSystem.guardLoadedVolume(fixture, error: NSError(domain: NSPOSIXError
     expect(volume == nil, "Failed load must not return a volume"); checkError(error, EIO)
 }
 print("FSKit filesystem loading: all checks passed (\(checks) total)")
+
+let storageDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("ab-worm-fskit-\(UUID().uuidString)")
+try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: false)
+do {
+    let volume = try StorageVolume(source: storageDirectory, retentionSeconds: 365 * 86400)
+    let guardVolume = NamespaceGuard(volume)
+    let root = volume.item("")
+    var file: FSItem?
+    var callbackCount = 0
+    guardVolume.createItem(named: FSFileName(string: "audit.log"), type: .file, inDirectory: root,
+                          attributes: FSItem.SetAttributesRequest()) { item, _, error in
+        expect(error == nil && item != nil, "Persistent file creation must succeed")
+        file = item; callbackCount += 1
+    }
+    expect(callbackCount == 1, "Persistent create must reply once")
+    for offset: Int64 in [0, 16] {
+        guardVolume.write(contents: Data("0123456789abcdef".utf8), to: file!, at: offset) { count, error in
+            expect(count == 16 && error == nil, "Persistent append must succeed")
+        }
+    }
+    guardVolume.write(contents: Data([0]), to: file!, at: 0) { count, error in
+        expect(count == 0, "Overwrite must not write bytes"); checkError(error, EPERM)
+    }
+    let truncate = FSItem.SetAttributesRequest()
+    truncate.size = 0
+    guardVolume.setAttributes(truncate, on: file!) { _, error in checkError(error, EPERM) }
+    let meta = volume.item("audit.log.meta")
+    guardVolume.openItem(meta, modes: [.write]) { error in checkError(error, EPERM) }
+    guardVolume.write(contents: Data([0]), to: meta, at: 0) { _, error in checkError(error, EPERM) }
+    guardVolume.removeItem(meta, named: FSFileName(string: "audit.log.meta"), fromDirectory: root) { error in checkError(error, EPERM) }
+    guardVolume.removeItem(file!, named: FSFileName(string: "audit.log"), fromDirectory: root) { error in checkError(error, EPERM) }
+    let record = try JSONSerialization.jsonObject(with: Data(contentsOf: storageDirectory.appendingPathComponent("audit.log.meta"))) as! [String: Any]
+    expect(record["lock_offset"] as? Int == 32, "Persistent LOCK must be 32")
+    expect(record["checksum"] as? String == "3eb1bd439947eb762998e566ccc2e099c791118b2f40579cc4f7da2b5061b7f9", "Persistent digest must match whole-file SHA-256")
+    expect((record["retain_until"] as! UInt64) - (record["created_at"] as! UInt64) == 365 * 86400, "Retention must start at creation")
+    expect(try volume.client.entries("").map(\.name) == ["audit.log", "audit.log.meta"], "Directory view must hide internal control files")
+}
+try FileManager.default.removeItem(at: storageDirectory)
+expect(try RetentionOptions.seconds(["-o", "retain=365"]) == 365 * 86400, "Retention days must convert to seconds")
+expect(try RetentionOptions.seconds(["-o", "retain=0"]) == 0, "Zero-day retention must be explicit")
+for arguments in [[], ["retain=-1"], ["retain=1", "retain=2"], ["retain=18446744073709551615"]] {
+    do { _ = try RetentionOptions.seconds(arguments); fatalError("Invalid retention must fail") }
+    catch { checkError(error, EINVAL) }
+}
+print("FSKit persistent storage: all checks passed (\(checks) total)")

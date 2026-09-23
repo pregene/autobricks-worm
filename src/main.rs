@@ -13,6 +13,20 @@ fn main() -> ExitCode {
             eprintln!("Storage operation failed: {error}");
             return ExitCode::FAILURE;
         }
+    } else if args
+        .first()
+        .is_some_and(|arg| arg == "mount" || arg == "unmount")
+    {
+        eprintln!("{banner}");
+        let result = if args[0] == "mount" {
+            cli::mount::run(&args)
+        } else {
+            cli::mount::unmount(&args)
+        };
+        if let Err(error) = result {
+            eprintln!("Mount operation failed: {error}");
+            return ExitCode::FAILURE;
+        }
     } else {
         println!("{banner}");
         match args.as_slice() {

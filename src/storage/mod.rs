@@ -6,6 +6,7 @@ mod paths;
 mod record;
 mod store;
 mod transaction;
+mod view;
 
 pub use record::Record;
 use std::{
