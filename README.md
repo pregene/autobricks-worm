@@ -30,16 +30,6 @@ Windows (PowerShell):
 .\target\release\ab-worm.exe --version
 ```
 
-Rust selects the OS module at compile time:
-
-| Target OS | Module | Executable |
-| --- | --- | --- |
-| Linux | `src/linux/` | `ab-worm` |
-| macOS | `src/macos/` | `ab-worm` |
-| Windows | `src/windows/` | `ab-worm.exe` |
-
-The shared policy and metadata modules compile on all three targets. Linux and macOS expose the shared FUSE namespace adapter through their OS modules. macOS enables it with the `macos-fuse` feature.
-
 ## CLI
 
 ```sh
@@ -119,39 +109,6 @@ For macOS setup and native tests, see [macOS testing](docs/MACOS_TESTING.md):
 ./scripts/test-macos.sh
 ./scripts/test-macos.sh --mount
 ```
-
-## Source layout
-
-| Path | Purpose |
-| --- | --- |
-| `src/lib.rs` | Target OS selection and public module exports |
-| `src/linux/mod.rs` | Linux configuration and FUSE integration |
-| `src/macos/mod.rs` | macOS configuration |
-| `src/macos/fuse.rs` | macOS FUSE callbacks and adapter export |
-| `src/linux/fuse.rs` | Linux FUSE adapter export |
-| `src/windows/mod.rs` | Windows configuration |
-| `src/policy/file.rs` | Append validation and retention deadlines |
-| `src/policy/entry.rs` | Immutable file and directory paths |
-| `src/policy/error.rs` | Policy error types |
-| `src/metadata/names.rs` | Reserved names and metadata filename derivation |
-| `src/metadata/access.rs` | Metadata user access rules |
-| `src/fuse/namespace.rs` | FUSE creation and rename enforcement |
-| `src/fuse/file_io.rs` | File I/O callback forwarding |
-| `src/fuse/directory_io.rs` | Directory I/O callback forwarding |
-| `src/fuse/attributes.rs` | Attribute and lookup callback forwarding |
-| `src/fuse/file_control.rs` | File control callback forwarding |
-| `src/fuse/lifecycle.rs` | Filesystem lifecycle callback forwarding |
-| `src/fuse/mod.rs` | FUSE adapter assembly and mount entry point |
-| `tests/` | Policy tests and mounted FUSE integration tests |
-| `tests/support/` | Test filesystem, mount cleanup, and syscall helpers |
-| `src/main.rs` | Product banner and CLI argument handling |
-| `build.rs` | Build-time version validation and embedding |
-| `build.sh` | Linux and macOS build entry point |
-| `build.ps1` | Windows PowerShell build entry point |
-| `scripts/build_lock.py` | Native build locks for Unix and Windows |
-| `scripts/build.py` | Version increments and build coordination |
-| `scripts/test-macos.sh` | macOS adapter and mount test commands |
-| `VERSION` | Executable version |
 
 ## FUSE references and licenses
 
