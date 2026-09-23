@@ -1,138 +1,225 @@
-# Autobricks WORM Filesystem — Appendable WORM
+# Autobricks WORM Filesystem
 
-A Rust project by **Autobricks, Co.** for **Appendable WORM (Write Once, Read Many)**: committed content stays immutable while new content can be appended to the same file.
+Autobricks WORM is an appendable WORM (Write Once, Read Many) filesystem.
+Committed bytes cannot be overwritten, while new bytes can be appended at the
+current lock boundary.
 
-The implemented policy core advances the LOCK boundary for each accepted append and keeps retention fixed from file creation. The command-line executable is **`ab-worm`**.
+The command-line executable is `ab-worm`. Current version: `0.1.6`.
 
-```text
-[Record A]                       → LOCK after A
-[Record A][Record B]             → LOCK after B
-[Record A][Record B][Record C]    → LOCK after C
+## Status
 
-Each append preserves all previously committed records.
-```
+- Linux: FUSE mount, storage policy, test workflow, and Debian packaging.
+- macOS: FSKit code is under verification.
+- Windows: planned for future development.
 
-## Build
+For Ubuntu service installation, see [INSTALL.md](INSTALL.md). For basic mounted
+filesystem operation, see [HOWTO.md](HOWTO.md).
 
-Requirements: Rust/Cargo and Python 3.
+## Development Setup
 
-macOS filesystem mount testing additionally requires macOS 26+, Apple Developer Program membership (or an enrolled team), and a signed FSKit extension. See [macOS development and testing](docs/MACOS_TESTING.md) for account and signing setup.
-
-Linux and macOS:
+Ubuntu:
 
 ```sh
+sudo apt-get update
+sudo apt-get install -y build-essential pkg-config fuse3
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+. "$HOME/.cargo/env"
+```
+
+Clone, build, and test:
+
+```sh
+git clone https://github.com/pregene/autobricks-worm.git
+cd autobricks-worm
+cargo test --locked
 ./build.sh --release
 ./target/release/ab-worm --version
 ```
 
-For Ubuntu service installation with `/worm-storage` mounted at `/mnt/worm-storage`, see [INSTALL.md](INSTALL.md) and [HOWTO.md](HOWTO.md).
+Linux mount integration test:
 
-Windows (PowerShell):
-
-```powershell
-.\build.ps1 --release
-.\target\release\ab-worm.exe --version
+```sh
+tests/linux-test.sh
 ```
+
+The integration test builds `bin/ab-worm`, mounts `worm-storage` at
+`worm-mount`, checks append-only behavior, directory behavior, metadata
+protection, delete rejection during retention, and delete success with
+zero-day retention.
 
 ## CLI
 
 ```sh
-ab-worm
 ab-worm --help
 ab-worm --version
+ab-worm mount SOURCE MOUNTPOINT --retain DAYS [--allow-other]
+ab-worm unmount MOUNTPOINT
 ```
 
-Every invocation prints the product banner with the embedded version:
-
-```text
-Autobricks WORM Filesystem 0.1.1 (C) 2026 Autobricks, Co.
-```
-
-Running with no arguments or `--help` displays usage. `--version` displays the banner. The short options are `-h` and `-V`. Invalid arguments produce an error and a nonzero exit status.
-
-## Backing storage test
-
-Use a private, initially empty directory for backing data. The local test directory is `worm-storage/`.
+Example:
 
 ```sh
-./target/release/ab-worm storage ./worm-storage create example.log 3600
-printf 'first record\n' | ./target/release/ab-worm storage ./worm-storage append example.log
-printf 'second record\n' | ./target/release/ab-worm storage ./worm-storage append example.log
-./target/release/ab-worm storage ./worm-storage verify example.log
-./target/release/ab-worm storage ./worm-storage meta example.log
+sudo mkdir -p /worm-storage /mnt/worm-storage
+sudo ab-worm mount /worm-storage /mnt/worm-storage --retain 365 --allow-other
 ```
 
-Each accepted append persists data, the standard SHA-256 checksum, incremental hash state, and LOCK. Retention starts at creation. Storage commands also support `read`, `mkdir`, and deletion after retention expires. The storage handle holds an exclusive process lock, and reopening recovers interrupted transactions. On Unix, the backing directory is restricted to its owner.
+## Appendable WORM Structure
 
-## Appendable WORM policy core
+Each file has data plus a metadata record. The metadata stores the creation
+time, fixed retention deadline, committed lock offset, checksum, and incremental
+hash state.
 
-`FilePolicy` provides in-memory policy calculations using three fields:
+```mermaid
+flowchart LR
+    subgraph DataFile["audit.log"]
+        A["Record A"]
+        B["Record B"]
+        C["Record C"]
+        L["LOCK offset"]
+    end
 
-| Field | Meaning |
-| --- | --- |
-| `created_at` | File creation time in UTC Unix seconds |
-| `retain_until` | Fixed retention deadline in UTC Unix seconds |
-| `lock_offset` | End of the committed data region, in bytes |
+    A --> B --> C --> L
 
-`FilePolicy::new(created_at, retention_seconds)` calculates:
+    subgraph MetaFile["audit.log.meta"]
+        M1["created_at"]
+        M2["retain_until"]
+        M3["lock_offset"]
+        M4["sha256 / hash state"]
+    end
 
-```text
-retain_until = created_at + retention_seconds
+    DataFile -. "described by" .-> MetaFile
 ```
 
-`after_append(offset, length)` returns an updated policy when the supplied offset equals the current LOCK boundary. It advances LOCK by the appended length and preserves the creation time and retention deadline. Other offsets return `NotAtEnd`.
+Append handling:
 
-`check_delete(now)` returns `RetentionActive` before the deadline and succeeds at or after it. Append validation continues to use the LOCK boundary after retention expires. Timestamp and offset arithmetic return `Overflow` when their values exceed the supported range.
+```mermaid
+sequenceDiagram
+    participant App as Writer
+    participant WORM as WORM policy
+    participant Data as Data file
+    participant Meta as Metadata
 
-`EntryPolicy` represents a file, directory, or metadata entry. Its `check_rename()` policy rejects name changes and moves with `ImmutablePath`, including replacement and exchange operations. A created entry retains its name and parent directory, including after file retention expires.
-
-## Metadata policy
-
-The metadata policy derives a sibling name by appending `.meta` to the complete data filename:
-
-```text
-audit.log → audit.log.meta
+    App->>WORM: write(offset, bytes)
+    WORM->>Meta: read lock_offset
+    alt offset == lock_offset
+        WORM->>Data: append bytes
+        WORM->>Meta: update lock_offset and hash state
+        WORM-->>App: success
+    else offset < lock_offset
+        WORM-->>App: reject overwrite
+    else offset > lock_offset
+        WORM-->>App: reject gap
+    end
 ```
 
-`metadata::check_user_access()` accepts reads and attribute queries. It returns `ReadOnlyMetadata` for user creation, writes, truncation, deletion, renaming, attribute changes, and link creation.
+Retention is fixed when the file is created. Appending changes `lock_offset` and
+hash state, but it does not extend `retain_until`.
 
-`metadata::check_user_entry_name()` reserves the `.meta` suffix, case-insensitively, for metadata entries. It also rejects empty names, `.` and `..`, path separators, and null bytes. `metadata::name_for()` applies these checks before deriving the metadata filename.
+```mermaid
+flowchart TD
+    Create["create file"] --> Policy["created_at + retain_seconds = retain_until"]
+    Policy --> Append1["append Record A"]
+    Append1 --> Append2["append Record B"]
+    Append2 --> Append3["append Record C"]
+    Append3 --> DeleteCheck{"delete requested"}
+    DeleteCheck -->|now < retain_until| Deny["deny delete"]
+    DeleteCheck -->|now >= retain_until| Allow["allow delete"]
+```
 
-## FUSE namespace adapter
+On Linux, retention checks use a monotonic boot clock so wall-clock changes do
+not make retained files expire early.
 
-On Linux, `platform::fuse::NamespaceGuard` wraps a `fuser::Filesystem` implementation. Its `create`, `mknod`, `mkdir`, `symlink`, and `link` callbacks validate destination names before dispatching to the backing filesystem. Reserved `.meta` names return `EPERM`, including uppercase variants. Rename requests also return `EPERM`.
+## FUSE Policy Flow
 
-`NamespaceGuard::new(filesystem).mount(mountpoint, options)` mounts the wrapped filesystem and processes requests. Other callbacks forward to the backing implementation.
+On Linux, `ab-worm mount` opens the backing storage as root and exposes it
+through a FUSE mount. Users interact with the mount point; policy checks happen
+before backing files are changed.
 
-## macOS FSKit adapter
+```mermaid
+flowchart TD
+    User["user process"] --> VFS["Linux VFS"]
+    VFS --> FUSE["FUSE request"]
+    FUSE --> Adapter["ab-worm FUSE adapter"]
+    Adapter --> Namespace["namespace policy"]
+    Adapter --> FilePolicy["file policy"]
+    Adapter --> Store["backing storage"]
 
-The macOS adapter uses Apple FSKit and the shared Rust namespace policy. It rejects reserved `.meta` creation and file, directory, and volume renames before dispatching to the backing volume. Native builds produce the FSKit adapter library alongside `ab-worm`.
+    Namespace --> N1["reject .meta creation"]
+    Namespace --> N2["reject rename and move"]
+    Namespace --> N3["reject invalid path names"]
+
+    FilePolicy --> P1["accept append at LOCK"]
+    FilePolicy --> P2["reject overwrite or gap"]
+    FilePolicy --> P3["reject delete before retention"]
+
+    Store --> Disk["source directory"]
+```
+
+Common request handling:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant K as Kernel/FUSE
+    participant A as ab-worm adapter
+    participant P as Policy
+    participant S as Store
+
+    U->>K: create/write/read/delete/rename
+    K->>A: FUSE callback
+    A->>P: validate namespace and WORM rules
+    alt allowed
+        A->>S: apply durable storage operation
+        S-->>A: result
+        A-->>K: success
+        K-->>U: success
+    else denied
+        A-->>K: EPERM/EACCES/EROFS
+        K-->>U: failure
+    end
+```
+
+Read-only metadata is exposed as a sibling `.meta` file. Applications can read
+metadata through the mount, but user writes, truncates, deletes, renames, and
+manual `.meta` creation are rejected.
+
+## Packaging
+
+Build local Ubuntu packages:
+
+```sh
+scripts/package_deb.sh
+```
+
+Build Ubuntu 22.04 and 24.04 packages for `amd64` and `arm64` with Docker:
+
+```sh
+scripts/package_deb_docker.sh
+AB_WORM_PACKAGE_IMAGE=ubuntu:24.04 AB_WORM_PACKAGE_OS_VERSION=24.04 scripts/package_deb_docker.sh
+```
+
+Generated packages are written to `build/`.
 
 ## Verification
 
 ```sh
-cargo test --offline
-cargo clippy --offline --all-targets -- -D warnings
+cargo test --locked
 cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
 python tests/build_version.py
 ```
 
-The policy tests cover fixed retention across appends, rejection of overwrites and gaps, deletion eligibility at the exact deadline, immutable file and directory paths, and arithmetic overflow.
-
-The FUSE mount test exercises `fopen()`, directory creation, symbolic links, hard links, FIFO creation, and rename requests through FUSE. It checks both successful ordinary creation and rejected reserved names. On Linux, run it with access to `/dev/fuse` and FUSE mount permission:
+Linux FUSE tests need `/dev/fuse` and mount permission:
 
 ```sh
 cargo test --locked --test fuse_namespace -- --ignored
+tests/linux-test.sh
 ```
 
-For macOS setup and native tests, see [macOS testing](docs/MACOS_TESTING.md):
+## Licenses
 
-```sh
-./scripts/test-macos.sh
-```
+FUSE and Rust `fuser` references, component licenses, and the original MIT notice
+are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-## FUSE references and licenses
-
-FUSE and Rust `fuser` references, component licenses, and the original MIT notice are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-The Apple SDK, Rust/Swift runtime, WinFsp, winfsp-rs, and Dokany license review is recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).
+The Apple SDK, Rust/Swift runtime, WinFsp, winfsp-rs, and Dokany license review
+is recorded in [Filesystem dependency licenses](docs/DEPENDENCY_LICENSES.md).

@@ -1,6 +1,6 @@
 # Install
 
-## Ubuntu
+## Ubuntu 22.04 / 24.04
 
 Build the Debian package:
 
@@ -8,20 +8,21 @@ Build the Debian package:
 scripts/package_deb.sh
 ```
 
-Build Ubuntu 22.04 packages for `amd64` and `arm64` with Docker:
+Build Ubuntu packages for `amd64` and `arm64` with Docker:
 
 ```sh
 scripts/package_deb_docker.sh
+AB_WORM_PACKAGE_IMAGE=ubuntu:24.04 AB_WORM_PACKAGE_OS_VERSION=24.04 scripts/package_deb_docker.sh
 ```
 
 Generated packages are written to `build/`. The directory is ignored by Git
 because release artifacts should be attached through the release process, not
 committed to the source repository.
 
-Install it:
+Install the package that matches the OS version and architecture:
 
 ```sh
-sudo dpkg -i build/ab-worm-*-ubuntu-22.04-amd64.deb
+sudo dpkg -i build/ab-worm-0.1.6-ubuntu-22.04-amd64.deb
 ```
 
 The installer asks for the retention period in days. It then creates:
